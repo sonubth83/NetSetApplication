@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.commons.CommonsMultipartFile;
 
+import in.nit.model.Category;
 import in.nit.model.Product;
 import in.nit.service.ICategoryService;
 import in.nit.service.IProductService;
@@ -41,7 +42,9 @@ public class ProductTypeController {
 	
 	@RequestMapping("/register")
 	public String showProduct(Model model) {
-		model.addAttribute("productType", new Product());
+		Product product = new Product();
+		product.setCategoryData(new Category());
+		model.addAttribute("productType", product);
 		commonUi(model);
 		return "ProductRegistration";
 	}
@@ -52,7 +55,8 @@ public class ProductTypeController {
 			Model model,
 			@RequestParam CommonsMultipartFile[] fileUpload
 			) {
-		Integer id = service.saveProduct(product);
+		//Product p = (Product) model.getAttribute("productType");
+		//Product p2 = (Product) model.getAttribute("product");
 		model.addAttribute("product", new Product());
 		if (fileUpload != null && fileUpload.length > 0) {
 			for (CommonsMultipartFile aFile : fileUpload) {
@@ -62,6 +66,7 @@ public class ProductTypeController {
 				product.setData(aFile.getBytes());
 			}
 		}
+		Integer id = service.saveProduct(product);
 		String message = "Product '" + id + "' saved";
 		model.addAttribute("message", message);
 		commonUi(model);
