@@ -1,121 +1,119 @@
-<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
-	pageEncoding="ISO-8859-1" isELIgnored="false"%>
-<%@taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
-<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<!DOCTYPE html>
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Category Register</title>
+package in.nit.controller;
 
-<link rel="stylesheet"
-	href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
-<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
-<script
-	src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-<script
-	src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
-<style>
-div {
-	padding-bottom: 4px;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.support.PagedListHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+
+import in.nit.model.Category;
+import in.nit.model.Product;
+import in.nit.service.ICategoryService;
+import in.nit.service.IProductService;
+import in.nit.util.CommonUtil;
+
+@Controller
+@RequestMapping("/product")
+public class ProductTypeController {
+
+	@Autowired
+	private IProductService service;
+
+	@Autowired
+	private ICategoryService catService;
+
+	public void commonUi(Model model) {
+		List<Object[]> categoryList = catService.getCategoryIdAndName();
+		Map<Integer, String> categoryMap = CommonUtil.convert(categoryList);
+		model.addAttribute("categoryMap", categoryMap);
+	}
+	
+	@RequestMapping("/register")
+	public String showProduct(Model model) {
+		Product product = new Product();
+		product.setCategoryData(new Category());
+		model.addAttribute("productType", product);
+		commonUi(model);
+		return "ProductRegistration";
+	}
+
+
+	@RequestMapping(value = "/insert", method = POST)
+	public String saveProduct(@ModelAttribute Product product,
+			Model model,
+			@RequestParam CommonsMultipartFile[] fileUpload
+			) {
+		//Product p = (Product) model.getAttribute("productType");
+		//Product p2 = (Product) model.getAttribute("product");
+		model.addAttribute("product", new Product());
+		if (fileUpload != null && fileUpload.length > 0) {
+			for (CommonsMultipartFile aFile : fileUpload) {
+				System.out.println("Saving file: " + aFile.getOriginalFilename());
+				
+				product.setFileName(aFile.getOriginalFilename());
+				product.setData(aFile.getBytes());
+			}
+		}
+		Integer id = service.saveProduct(product);
+		String message = "Product '" + id + "' saved";
+		model.addAttribute("message", message);
+		commonUi(model);
+		return "ProductRegistration";
+	}
+
+	@SuppressWarnings("unchecked")
+	@RequestMapping({ "/all", "/all/{page}" })
+	public String getAllProduct(@PathVariable(required = false, name = "page") String page, 
+			HttpServletRequest request,
+			HttpServletResponse response, Model model) {
+		List<Product> usersList = null;
+		PagedListHolder<Product> userList;
+		if (page == null) {
+			userList = new PagedListHolder<Product>();
+			usersList = service.getAllProduct();
+			System.out.println("Image ->"+usersList.get(0).getData());
+			userList.setSource(usersList);
+			userList.setPageSize(5);
+			
+			request.getSession().setAttribute("userList", userList);
+		} else if (page.equals("prev")) {
+			userList = (PagedListHolder<Product>) request.getSession().getAttribute("userList");
+			userList.previousPage();
+		} else if (page.equals("next")) {
+			userList = (PagedListHolder<Product>) request.getSession().getAttribute("userList");
+			userList.nextPage();
+		} else {
+			int pageNum = Integer.parseInt(page);
+			userList = (PagedListHolder<Product>) request.getSession().getAttribute("userList");
+
+			userList.setPage(pageNum - 1);
+
+		}
+		model.addAttribute("userList", userList); 
+		
+		return "ProductData";
+	}
+
+	@RequestMapping("/delete")
+	public String deleteProductById(@RequestParam("prdId") Integer id, Model model) {
+		service.deleteProduct(id);
+		String message = "Product '" + id + "' deleted";
+		model.addAttribute("message", message);
+
+		List<Product> list = service.getAllProduct();
+		model.addAttribute("list", list);
+		return "ProductData";
+	}
 }
-</style>
-</head>
-<body>
-	<div class="container">
-		<div class="card">
-			<div class="card-header bg-primary text-white text-center">
-				<h3>WELCOME TO PRODUCT PAGE</h3>
-			</div>
-			<div class="card-body">
-				<form:form action="insert" method="post"
-					modelAttribute="productType" enctype="multipart/form-data">
-
-					<div class="row">
-						<div class="col-1"></div>
-						<div class="col-3">
-							<label><b>PRODUCT NAME</b></label>
-						</div>
-						<div class="col-4">
-							<input type="text" name="prdName" class="form-control"
-								placeholder="PRODUCT NAME">
-						</div>
-						<div class="col-4">
-							<!-- FORM ERROR MESSAGE -->
-						</div>
-					</div>
-
-					<div class="row">
-						<div class="col-1"></div>
-						<div class="col-3">
-							<label><b>Choose Image</b></label>
-						</div>
-						<div class="col-4">
-							<input type="file" name="fileUpload" class="form-control" />
-						</div>
-						<div class="col-4">
-							<!-- FORM ERROR MESSAGE -->
-						</div>
-					</div>
-
-					<%-- <div class="row">
-						<div class="col-1"></div>
-						<div class="col-3">
-							<label><b>CATEGORY</b></label>
-						</div>
-						<div class="col-4">
-							<form:select path="categoryData.categoryId" class="form-control">
-								<form:option value="">-SELECT-</form:option>
-								<form:options items="${categoryMap}" />
-							</form:select>
-						</div>
-						<div class="col-4">
-							<!-- FORM ERROR MESSAGE -->
-						</div>
-					</div> --%>
-
-					<div class="row">
-						<div class="col-1"></div>
-						<div class="col-3">
-							<label><b>COLOR</b></label>
-						</div>
-						<div class="col-4">
-							<input type="text" name="color" class="form-control"
-								placeholder="COLOR">
-						</div>
-						<div class="col-4">
-							<!-- FORM ERROR MESSAGE -->
-						</div>
-					</div>
-
-					<div class="row">
-						<div class="col-1"></div>
-						<div class="col-3">
-							<label><b>PRICE</b></label>
-						</div>
-						<div class="col-4">
-							<input type="text" name="price" class="form-control"
-								placeholder="PRICE">
-						</div>
-						<div class="col-4">
-							<!-- FORM ERROR MESSAGE -->
-						</div>
-					</div>
-
-					<div class="row text-center">
-						<div class="col-4"></div>
-						<div class="col-4">
-							<input type="submit" value="CREATE PRODUCT"
-								class="btn btn-success">
-						</div>
-						<div class="col-4"></div>
-					</div>
-				</form:form>
-			</div>
-			<div class="card-footer bg-info text-white text-center">
-				${message}</div>
-		</div>
-	</div>
-</body>
-</html>
